@@ -1,0 +1,25 @@
+{
+  "name": "warehouse-mock-plugin",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "chokidar": "^3.5.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "webpack": "^5.0.0",
+    "webpack-dev-server": "^4.0.0",
+    "@types/webpack": "^5.0.0",
+    "@types/webpack-dev-server": "^4.0.0",
+    "@types/node": "^18.0.0"
+  },
+  "peerDependencies": {
+    "webpack": "^4.0.0 || ^5.0.0"
+  }
+}
+
