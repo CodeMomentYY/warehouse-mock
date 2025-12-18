@@ -136,13 +136,6 @@ class WarehouseMockPlugin {
         if (!url) {
             return next();
         }
-        // ============ 特殊端点：返回运行时拦截脚本 ============
-        if (url === '/__warehouse_mock_runtime__.js') {
-            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-            res.end(this.generateRuntimeScript());
-            return;
-        }
         // ============ 特殊端点：实时返回 mock 文件列表 ============
         if (url === '/__mock_list__') {
             const fileList = this.getMockFileList();
@@ -167,12 +160,13 @@ class WarehouseMockPlugin {
         let filePath = '';
         let matched = false;
         let matchedName = '';
-        // 1. 优先尝试 Query String 匹配 (RPC 风格接口)
+        // 1. 优先尝试 Query String 匹配 (RPC 风格接口，如 /api?user.taurus.pointInfo)
         if (req.url && req.url.includes('?')) {
             const queryPart = req.url.split('?')[1];
             if (queryPart) {
                 const params = new URLSearchParams(queryPart);
                 for (const key of params.keys()) {
+                    // 尝试匹配 key.json (例如 user.taurus.pointInfo.json)
                     const queryFilePath = path_1.default.join(mockPath, `${key}.json`);
                     if (fs_1.default.existsSync(queryFilePath) && fs_1.default.statSync(queryFilePath).isFile()) {
                         filePath = queryFilePath;
@@ -180,6 +174,7 @@ class WarehouseMockPlugin {
                         matched = true;
                         break;
                     }
+                    // 也尝试匹配 value (例如 method=user.taurus.pointInfo)
                     const value = params.get(key);
                     if (value) {
                         const valueFilePath = path_1.default.join(mockPath, `${value}.json`);
@@ -193,7 +188,7 @@ class WarehouseMockPlugin {
                 }
             }
         }
-        // 2. 尝试扁平化命名
+        // 2. 尝试扁平化命名 (将路径中的 / 替换为 _)
         if (!matched) {
             const flatName = url.replace(/^\//, '').replace(/\//g, '_') || 'index';
             const flatFilePath = path_1.default.join(mockPath, `${flatName}.json`);
@@ -203,7 +198,7 @@ class WarehouseMockPlugin {
                 matched = true;
             }
         }
-        // 3. 尝试嵌套目录结构匹配
+        // 3. 尝试嵌套目录结构匹配 (向后兼容)
         if (!matched) {
             const nestedFilePath = path_1.default.join(mockPath, url + '.json');
             if (fs_1.default.existsSync(nestedFilePath) && fs_1.default.statSync(nestedFilePath).isFile()) {
@@ -244,110 +239,6 @@ class WarehouseMockPlugin {
             }
         }
         next();
-    }
-    /**
-     * 生成运行时拦截脚本
-     * 自动拦截 fetch/XMLHttpRequest，无需修改业务代码
-     */
-    generateRuntimeScript() {
-        const localApiPrefix = this.getLocalApiPrefix();
-        return `
-(function() {
-  if (window.__WAREHOUSE_MOCK_INITIALIZED__) return;
-  window.__WAREHOUSE_MOCK_INITIALIZED__ = true;
-
-  console.log('[WarehouseMock] 运行时拦截已启动');
-
-  var MOCK_API_PREFIX = '${localApiPrefix}';
-  var mockList = [];
-  var mockListLoaded = false;
-
-  // 获取 mock 列表
-  function loadMockList() {
-    if (mockListLoaded) return Promise.resolve(mockList);
-    
-    return fetch('/__mock_list__')
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        mockList = data.mockList || [];
-        mockListLoaded = true;
-        console.log('[WarehouseMock] Mock 列表:', mockList);
-        return mockList;
-      })
-      .catch(function(err) {
-        console.warn('[WarehouseMock] 获取 mock 列表失败:', err);
-        mockListLoaded = true;
-        return [];
-      });
-  }
-
-  // 从 URL 中提取 action（RPC 风格）
-  function extractAction(url) {
-    try {
-      var urlObj = new URL(url, window.location.origin);
-      var queryString = urlObj.search.substring(1);
-      if (!queryString) return null;
-      
-      var params = new URLSearchParams(queryString);
-      for (var key of params.keys()) {
-        // 返回第一个参数作为 action
-        return key;
-      }
-    } catch (e) {
-      return null;
-    }
-    return null;
-  }
-
-  // 判断是否需要 mock
-  function shouldMock(url) {
-    var action = extractAction(url);
-    if (!action) return false;
-    return mockList.indexOf(action) !== -1;
-  }
-
-  // 重写 URL
-  function rewriteUrl(originalUrl) {
-    var action = extractAction(originalUrl);
-    if (!action) return originalUrl;
-    
-    console.log('[WarehouseMock] 拦截:', action, '-> Mock');
-    return MOCK_API_PREFIX + '?' + action;
-  }
-
-  // 拦截 fetch
-  var originalFetch = window.fetch;
-  window.fetch = function(url, options) {
-    return loadMockList().then(function() {
-      var finalUrl = (typeof url === 'string' && shouldMock(url)) ? rewriteUrl(url) : url;
-      return originalFetch.call(this, finalUrl, options);
-    });
-  };
-
-  // 拦截 XMLHttpRequest
-  var OriginalXHR = window.XMLHttpRequest;
-  function MockXHR() {
-    var xhr = new OriginalXHR();
-    var originalOpen = xhr.open;
-    
-    xhr.open = function(method, url) {
-      var args = Array.prototype.slice.call(arguments);
-      // 如果 mock 列表已加载，立即重写 URL
-      if (mockListLoaded && typeof url === 'string' && shouldMock(url)) {
-        args[1] = rewriteUrl(url);
-      }
-      return originalOpen.apply(xhr, args);
-    };
-    
-    return xhr;
-  }
-  MockXHR.prototype = OriginalXHR.prototype;
-  window.XMLHttpRequest = MockXHR;
-
-  // 初始化
-  loadMockList();
-})();
-`;
     }
 }
 module.exports = WarehouseMockPlugin;

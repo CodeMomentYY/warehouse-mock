@@ -29,10 +29,5 @@ declare class WarehouseMockPlugin {
     private ensureMockDirectory;
     private createDemoFile;
     private handleRequest;
-    /**
-     * 生成运行时拦截脚本
-     * 自动拦截 fetch/XMLHttpRequest，无需修改业务代码
-     */
-    private generateRuntimeScript;
 }
 export = WarehouseMockPlugin;
