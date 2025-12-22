@@ -6,9 +6,26 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const chalk_1 = __importDefault(require("chalk"));
 class WarehouseMockPlugin {
-    constructor(options) {
+    constructor(options = {}) {
         this.resolvedMockPath = '';
-        this.options = Object.assign({ apiPrefixes: ['/api', '/mock-api'], localApiPrefix: '/mock-api' }, options);
+        this.isEnabled = true;
+        // 默认配置
+        this.options = {
+            mockPath: options.mockPath || 'warehouseMock',
+            apiPrefixes: options.apiPrefixes || ['/api', '/mock-api'],
+            localApiPrefix: options.localApiPrefix || '/mock-api',
+            enabled: options.enabled !== undefined ? options.enabled : true,
+            proxy: options.proxy || undefined,
+            injectEnv: options.injectEnv !== undefined ? options.injectEnv : true,
+            delay: options.delay || 0,
+        };
+        // 判断是否启用（支持环境变量控制）
+        if (process.env.MOCK === 'false' || process.env.VUE_APP_MOCK === 'false') {
+            this.isEnabled = false;
+        }
+        if (this.options.enabled === false) {
+            this.isEnabled = false;
+        }
     }
     /**
      * 实时扫描 mock 目录，获取所有 mock 文件名列表
@@ -33,7 +50,16 @@ class WarehouseMockPlugin {
         return this.options.localApiPrefix || '/mock-api';
     }
     apply(compiler) {
+        // 如果未启用，直接返回
+        if (!this.isEnabled) {
+            console.log(chalk_1.default.yellow('[WarehouseMock] Mock 模式未启用'));
+            return;
+        }
         this.resolvedMockPath = path_1.default.resolve(compiler.context, this.options.mockPath);
+        // 自动注入环境变量 VUE_APP_MOCK
+        if (this.options.injectEnv) {
+            this.injectEnvironmentVariable(compiler);
+        }
         // 确保 mock 目录存在
         if (!fs_1.default.existsSync(this.resolvedMockPath)) {
             try {
@@ -46,21 +72,51 @@ class WarehouseMockPlugin {
             }
         }
         const mockFileList = this.getMockFileList();
-        console.log(chalk_1.default.cyan(`[WarehouseMock] 已加载 ${mockFileList.length} 个 mock 文件: ${mockFileList.join(', ')}`));
-        const devServerOptions = compiler.options.devServer || {};
-        const originalSetupMiddlewares = devServerOptions.setupMiddlewares;
-        if (!compiler.options.devServer) {
-            compiler.options.devServer = {};
+        console.log(chalk_1.default.cyan(`[WarehouseMock] 已加载 ${mockFileList.length} 个 mock 文件`));
+        if (mockFileList.length > 0) {
+            console.log(chalk_1.default.gray(`  → ${mockFileList.join(', ')}`));
         }
-        // 适用于 Webpack 5 (setupMiddlewares)
-        compiler.options.devServer.setupMiddlewares = (middlewares, devServer) => {
-            return this.setupMiddlewares(middlewares, devServer, originalSetupMiddlewares);
-        };
-        // 适用于 Webpack 4 (before)
-        const originalBefore = devServerOptions.before;
-        compiler.options.devServer.before = (app, server, compilerArg) => {
-            this.runBefore(app, server, compilerArg, originalBefore);
-        };
+        if (this.options.proxy) {
+            console.log(chalk_1.default.cyan(`[WarehouseMock] 代理模式: 未匹配请求 → ${this.options.proxy.target}`));
+        }
+        // 注意：devServer 的配置需要在 vue.config.js 中手动配置
+        // 对于 Webpack 5 使用 setupMiddlewares
+        // 对于 Webpack 4 使用 before
+    }
+    /**
+     * 自动注入环境变量 VUE_APP_MOCK
+     */
+    injectEnvironmentVariable(compiler) {
+        try {
+            // 使用 compiler 的 webpack 实例
+            const { webpack } = compiler;
+            if (webpack && webpack.DefinePlugin) {
+                const definePlugin = new webpack.DefinePlugin({
+                    'process.env.VUE_APP_MOCK': JSON.stringify('true'),
+                });
+                if (!compiler.options.plugins) {
+                    compiler.options.plugins = [];
+                }
+                compiler.options.plugins.push(definePlugin);
+                console.log(chalk_1.default.gray('[WarehouseMock] 已注入环境变量: VUE_APP_MOCK=true'));
+            }
+            else {
+                // 备用方案：直接require webpack
+                const webpackModule = require('webpack');
+                const definePlugin = new webpackModule.DefinePlugin({
+                    'process.env.VUE_APP_MOCK': JSON.stringify('true'),
+                });
+                if (!compiler.options.plugins) {
+                    compiler.options.plugins = [];
+                }
+                compiler.options.plugins.push(definePlugin);
+                console.log(chalk_1.default.gray('[WarehouseMock] 已注入环境变量: VUE_APP_MOCK=true'));
+            }
+        }
+        catch (err) {
+            console.error(chalk_1.default.red(`[WarehouseMock] 注入环境变量失败: ${err}`));
+            console.log(chalk_1.default.yellow('[WarehouseMock] 请在 vue.config.js 中手动配置 DefinePlugin'));
+        }
     }
     /**
      * 公共方法：设置中间件 (Webpack 5 / Vue CLI 5+)
@@ -131,7 +187,7 @@ class WarehouseMockPlugin {
         }
     }
     handleRequest(req, res, next, mockPath) {
-        var _a, _b;
+        var _a, _b, _c;
         const url = req.path || ((_a = req.url) === null || _a === void 0 ? void 0 : _a.split('?')[0]);
         if (!url) {
             return next();
@@ -144,6 +200,8 @@ class WarehouseMockPlugin {
             res.end(JSON.stringify({
                 mockList: fileList,
                 localApiPrefix: this.getLocalApiPrefix(),
+                proxy: ((_b = this.options.proxy) === null || _b === void 0 ? void 0 : _b.target) || null,
+                enabled: this.isEnabled,
             }));
             return;
         }
@@ -153,7 +211,7 @@ class WarehouseMockPlugin {
         }
         // 检查是否在允许的 API 前缀范围内
         const { apiPrefixes } = this.options;
-        const isApiRequest = (_b = apiPrefixes === null || apiPrefixes === void 0 ? void 0 : apiPrefixes.some((prefix) => url.startsWith(prefix))) !== null && _b !== void 0 ? _b : true;
+        const isApiRequest = (_c = apiPrefixes === null || apiPrefixes === void 0 ? void 0 : apiPrefixes.some((prefix) => url.startsWith(prefix))) !== null && _c !== void 0 ? _c : true;
         if (!isApiRequest) {
             return next();
         }
@@ -216,29 +274,142 @@ class WarehouseMockPlugin {
             }
         }
         if (matched) {
-            console.log(chalk_1.default.green(`[WarehouseMock] 拦截: ${matchedName} -> ${path_1.default.basename(filePath)}`));
-            try {
-                const data = fs_1.default.readFileSync(filePath, 'utf-8');
+            console.log(chalk_1.default.green(`[WarehouseMock] ✓ 拦截: ${req.url || url}`));
+            console.log(chalk_1.default.gray(`  → 返回: ${path_1.default.basename(filePath)}`));
+            // 模拟网络延迟
+            const respond = () => {
                 try {
-                    const jsonData = JSON.parse(data);
-                    res.setHeader('Content-Type', 'application/json');
-                    res.end(JSON.stringify(jsonData));
+                    const data = fs_1.default.readFileSync(filePath, 'utf-8');
+                    try {
+                        const jsonData = JSON.parse(data);
+                        res.setHeader('Content-Type', 'application/json');
+                        res.setHeader('X-Mock-By', 'WarehouseMock');
+                        res.end(JSON.stringify(jsonData));
+                    }
+                    catch (jsonErr) {
+                        console.warn(chalk_1.default.yellow(`[WarehouseMock] 无效的 JSON 文件: ${filePath}`));
+                        res.setHeader('Content-Type', 'text/plain');
+                        res.end(data);
+                    }
                 }
-                catch (jsonErr) {
-                    console.warn(chalk_1.default.yellow(`[WarehouseMock] 无效的 JSON 文件: ${filePath}`));
-                    res.setHeader('Content-Type', 'text/plain');
-                    res.end(data);
+                catch (e) {
+                    console.error(chalk_1.default.red(`[WarehouseMock] 读取 Mock 文件失败: ${e}`));
+                    res.statusCode = 500;
+                    res.end('Mock Read Error');
                 }
-                return;
+            };
+            if (this.options.delay > 0) {
+                setTimeout(respond, this.options.delay);
             }
-            catch (e) {
-                console.error(chalk_1.default.red(`[WarehouseMock] 读取 Mock 文件失败: ${e}`));
-                res.statusCode = 500;
-                res.end('Mock Read Error');
-                return;
+            else {
+                respond();
+            }
+            return;
+        }
+        // 未匹配到 Mock 文件
+        if (this.options.proxy) {
+            // 如果配置了代理，转发到真实 API
+            console.log(chalk_1.default.gray(`[WarehouseMock] ⊳ 代理: ${req.url || url} → ${this.options.proxy.target}`));
+            this.proxyRequest(req, res, next);
+        }
+        else {
+            // 未配置代理，直接放行
+            next();
+        }
+    }
+    /**
+     * 代理请求到真实 API（改进版）
+     */
+    proxyRequest(req, res, next) {
+        if (!this.options.proxy) {
+            return next();
+        }
+        try {
+            const http = require('http');
+            const https = require('https');
+            const url = require('url');
+            // 构建完整的目标 URL
+            // 将 /mock-api?xxx 转换为 真实API/api?xxx
+            const targetUrl = this.options.proxy.target + req.url.replace('/mock-api', '/api');
+            const parsedUrl = url.parse(targetUrl);
+            const isHttps = parsedUrl.protocol === 'https:';
+            const lib = isHttps ? https : http;
+            // 清理请求头
+            const headers = Object.assign({}, req.headers);
+            delete headers.host;
+            headers.host = parsedUrl.hostname;
+            // 创建代理请求
+            const proxyReq = lib.request({
+                hostname: parsedUrl.hostname,
+                port: parsedUrl.port || (isHttps ? 443 : 80),
+                path: parsedUrl.path,
+                method: req.method,
+                headers: headers,
+                timeout: 30000, // 30秒超时
+            }, (proxyRes) => {
+                // 转发响应头
+                res.writeHead(proxyRes.statusCode, proxyRes.headers);
+                // 转发响应体
+                proxyRes.pipe(res);
+            });
+            // 错误处理
+            proxyReq.on('error', (err) => {
+                console.error(chalk_1.default.red(`[WarehouseMock] 代理请求失败: ${err.message}`));
+                console.error(chalk_1.default.red(`  目标地址: ${targetUrl}`));
+                // 返回友好的错误信息
+                if (!res.headersSent) {
+                    res.statusCode = 502;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({
+                        code: -1,
+                        msg: `代理请求失败: ${err.message}`,
+                        error: 'PROXY_ERROR'
+                    }));
+                }
+            });
+            // 超时处理
+            proxyReq.on('timeout', () => {
+                proxyReq.destroy();
+                if (!res.headersSent) {
+                    res.statusCode = 504;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({
+                        code: -1,
+                        msg: '代理请求超时',
+                        error: 'PROXY_TIMEOUT'
+                    }));
+                }
+            });
+            // 转发请求体
+            if (req.method === 'POST' || req.method === 'PUT') {
+                // 处理 POST/PUT 请求的 body
+                let body = '';
+                req.on('data', (chunk) => {
+                    body += chunk.toString();
+                });
+                req.on('end', () => {
+                    if (body) {
+                        proxyReq.write(body);
+                    }
+                    proxyReq.end();
+                });
+            }
+            else {
+                proxyReq.end();
             }
         }
-        next();
+        catch (err) {
+            console.error(chalk_1.default.red(`[WarehouseMock] 代理配置错误: ${err}`));
+            if (!res.headersSent) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({
+                    code: -1,
+                    msg: `代理配置错误: ${err}`,
+                    error: 'PROXY_CONFIG_ERROR'
+                }));
+            }
+        }
     }
 }
 module.exports = WarehouseMockPlugin;

@@ -1,13 +1,21 @@
 import { Compiler } from 'webpack';
 interface MockPluginOptions {
-    mockPath: string;
+    mockPath?: string;
     apiPrefixes?: string[];
     localApiPrefix?: string;
+    enabled?: boolean;
+    proxy?: {
+        target: string;
+        changeOrigin?: boolean;
+    };
+    injectEnv?: boolean;
+    delay?: number;
 }
 declare class WarehouseMockPlugin {
     private options;
     private resolvedMockPath;
-    constructor(options: MockPluginOptions);
+    private isEnabled;
+    constructor(options?: MockPluginOptions);
     /**
      * 实时扫描 mock 目录，获取所有 mock 文件名列表
      */
@@ -17,6 +25,10 @@ declare class WarehouseMockPlugin {
      */
     getLocalApiPrefix(): string;
     apply(compiler: Compiler): void;
+    /**
+     * 自动注入环境变量 VUE_APP_MOCK
+     */
+    private injectEnvironmentVariable;
     /**
      * 公共方法：设置中间件 (Webpack 5 / Vue CLI 5+)
      */
@@ -29,5 +41,9 @@ declare class WarehouseMockPlugin {
     private ensureMockDirectory;
     private createDemoFile;
     private handleRequest;
+    /**
+     * 代理请求到真实 API（改进版）
+     */
+    private proxyRequest;
 }
 export = WarehouseMockPlugin;

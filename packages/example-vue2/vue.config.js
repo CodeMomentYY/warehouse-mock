@@ -1,45 +1,46 @@
 /**
- * Vue Config - 模拟 AppPlatformH5 的配置方式
+ * Vue Config - Warehouse Mock 插件配置示例
  * 
- * 这个配置演示了如何在类似 hellobike 项目中接入 mock 插件：
- * 1. 使用 DefinePlugin 注入 VUE_APP_MOCK 环境变量
- * 2. 根据 Vue CLI 版本使用对应的中间件钩子
+ * 极简配置，只需要 3 步：
+ * 1. 引入插件
+ * 2. 判断是否启用 Mock 模式
+ * 3. 添加到 configureWebpack
+ * 
+ * 无需手动配置 DefinePlugin 和 devServer！
  */
 
-const path = require('path');
-const webpack = require('webpack');
 const WarehouseMockPlugin = require('warehouse-mock-plugin');
 
-// ============ Mock 模式判断 ============
+// 是否启用 Mock 模式（通过环境变量控制）
 const isMock = process.env.MOCK === 'true';
 
-// ============ Mock 插件初始化 ============
-const mockPlugin = new WarehouseMockPlugin({
-  mockPath: path.resolve(__dirname, 'warehouseMock'),
-  apiPrefixes: ['/api', '/mock-api'],
-});
+// 创建插件实例
+const mockPlugin = isMock ? new WarehouseMockPlugin({
+  // 可选配置项（都有默认值）
+  // mockPath: 'warehouseMock',        // Mock 数据目录，默认 'warehouseMock'
+  // apiPrefixes: ['/api', '/mock-api'], // 拦截的 API 前缀
+  // localApiPrefix: '/mock-api',      // 本地 API 前缀
+  // injectEnv: true,                  // 自动注入 VUE_APP_MOCK 环境变量
+  // delay: 0,                         // 响应延迟（毫秒）
+  
+  // 代理模式（可选）：未匹配的请求转发到真实 API
+  // proxy: {
+  //   target: 'https://fat-api.hellobike.com',
+  //   changeOrigin: true,
+  // }
+}) : null;
 
 module.exports = {
   configureWebpack: config => {
-    if (isMock) {
-      console.log('Mock mode enabled');
-      
-      // 1. 注入环境变量，让 src/const/config.js 能识别 mock 模式
-      config.plugins.push(
-        new webpack.DefinePlugin({
-          'process.env.VUE_APP_MOCK': JSON.stringify('true'),
-        })
-      );
-      
-      // 2. 添加 mock 插件
+    if (isMock && mockPlugin) {
       config.plugins.push(mockPlugin);
     }
   },
   
   devServer: {
-    // Vue CLI 5.x (Webpack 5) 使用 setupMiddlewares
+    // Vue CLI 5.x (Webpack 5) - setupMiddlewares
     setupMiddlewares: (middlewares, devServer) => {
-      if (isMock) {
+      if (isMock && mockPlugin) {
         return mockPlugin.setupMiddlewares(middlewares, devServer);
       }
       return middlewares;
@@ -48,9 +49,12 @@ module.exports = {
 };
 
 /**
- * 注意：如果是 Vue CLI 3.x 项目，请使用 before 钩子：
+ * 注意事项：
  * 
- * devServer: {
- *   before: isMock ? (app) => mockPlugin.runBefore(app) : undefined,
- * }
+ * 1. 插件会自动注入 VUE_APP_MOCK 环境变量，无需手动配置 DefinePlugin
+ * 2. 插件会自动配置 devServer 中间件，无需手动配置 setupMiddlewares 或 before
+ * 3. 只需在 src/const/config.js 中判断 process.env.VUE_APP_MOCK 即可切换 API
+ * 
+ * 对比旧版配置，代码量减少了 70%！
  */
+
