@@ -36,7 +36,9 @@
   "homepage": "https://github.com/CodeMomentYY/warehouse-mock#readme",
   "dependencies": {
     "chalk": "^4.1.2",
-    "chokidar": "^3.5.3"
+    "chokidar": "^3.5.3",
+    "i": "^0.3.7",
+    "npm": "^11.7.0"
   },
   "optionalDependencies": {
     "warehouse-mock-admin": "^1.0.0"
