@@ -1,55 +1,284 @@
 ---
-description: 项目规则和 Warehouse Mock 插件使用说明
+description: Warehouse Mock 项目开发规则与完整指南
 globs: packages/**/*
 ---
 
-# Warehouse Mock 项目规则
+# Warehouse Mock 项目开发规则
 
-## 项目结构
-这是一个基于 Lerna 的 monorepo，包含以下包：
-- `packages/mock-webpack-plugin`: Warehouse Mock Webpack 插件的源代码。
-- `packages/example-vue2`: 一个演示插件用法的 Vue 2 示例项目。
-
-## 开发标准
-- **包管理器**: npm
-- **Monorepo 管理器**: Lerna
-- **语言**: TypeScript (插件), JavaScript (Vue 2 示例)
-- **Linting**: ESLint + Prettier
+> 最后更新：2025-12-23
+> 这是一个基于 Webpack 的企业级 Mock 插件，支持 Vue CLI 项目，提供可视化后台管理。
 
 ---
 
-## Warehouse Mock 插件使用说明
+## 📦 项目概览
 
-### 安装
-```bash
-npm install warehouse-mock-plugin --save-dev
+### Monorepo 架构
+这是一个基于 **Lerna 8.x** 管理的 monorepo 项目，包含以下包：
+
+```
+warehouse-mock/
+├── packages/
+│   ├── mock-webpack-plugin/   # 核心 Webpack 插件（npm: warehouse-mock）
+│   ├── mock-admin/             # 可视化管理后台（npm: warehouse-mock-admin）
+│   └── example-vue2/           # Vue 2 示例项目（private，不发布）
+├── lerna.json                  # Lerna 配置
+└── package.json                # 根配置
 ```
 
-### 插件配置选项
+### 核心包说明
+
+#### 1. `mock-webpack-plugin` (npm: `warehouse-mock`)
+**作用**: Webpack 插件本体，拦截 HTTP 请求并返回本地 Mock 数据。
+
+**核心功能**:
+- ✅ 支持 Webpack 4/5（Vue CLI 3-5）
+- ✅ 拦截 RPC 和 RESTful 风格的 API 请求
+- ✅ 支持多场景 Mock 数据（success/error/custom）
+- ✅ 接口级配置（延时、启用/禁用、活动场景）
+- ✅ 实时更新（修改文件无需重启服务）
+- ✅ 自动创建初始 Mock 目录和示例文件
+- ✅ 集成可视化管理后台（可选）
+
+**发布名称**: `warehouse-mock`  
+**依赖关系**: `optionalDependencies: warehouse-mock-admin`
+
+#### 2. `mock-admin` (npm: `warehouse-mock-admin`)
+**作用**: 提供可视化后台，通过 Web 界面管理 Mock 数据。
+
+**技术栈**:
+- **前端**: React 18 + TypeScript + Ant Design 5 + Vite
+- **后端**: Express + TypeScript
+- **构建产物**: 前端构建后嵌入 `dist/client`，后端编译到 `dist`
+
+**核心功能**:
+- ✅ 接口列表展示（搜索、状态过滤）
+- ✅ 创建/编辑/删除接口配置
+- ✅ 多场景 Mock 数据管理（添加/编辑/删除场景）
+- ✅ 接口延时配置（模拟网络延迟）
+- ✅ 接口启用/禁用开关
+- ✅ 接口和场景重命名
+- ✅ 实时文件系统操作（无需重启）
+
+**发布名称**: `warehouse-mock-admin`  
+**端口**: 默认 `3100`
+
+#### 3. `example-vue2`
+**作用**: 用于测试和演示插件功能的 Vue 2 项目。
+
+**特点**:
+- ⚠️ 标记为 `"private": true`，**不会被 Lerna 发布**
+- ✅ 包含完整的接入配置示例
+- ✅ 包含多场景 Mock 数据示例
+
+---
+
+## 🛠️ 开发环境与工具
+
+### 技术栈
+- **包管理器**: npm (推荐 v7+)
+- **Monorepo 管理器**: Lerna 8.x
+- **语言**: TypeScript (插件和后台)，JavaScript (示例项目)
+- **代码规范**: ESLint + Prettier
+- **构建工具**: TypeScript Compiler (tsc), Vite (前端)
+
+### 本地开发环境搭建
+
+#### 1. 克隆并安装依赖
+```bash
+cd warehouse-mock
+npm install                    # 安装根依赖和所有子包依赖
+```
+
+#### 2. 构建插件包
+```bash
+# 构建 mock-webpack-plugin
+npm run build --workspace=packages/mock-webpack-plugin
+
+# 构建 mock-admin（如果需要测试后台）
+cd packages/mock-admin
+npm run build      # 构建前端和后端
+```
+
+#### 3. 运行示例项目
+```bash
+cd packages/example-vue2
+npm install
+npm run mock       # 启动 Mock 模式
+```
+
+访问:
+- **前端应用**: http://localhost:8080
+- **管理后台**: http://localhost:3100
+
+### 软链调试（重要！）
+
+在外部项目中调试本地开发版本的插件：
+
+```bash
+# 1. 在插件包中创建全局软链
+cd packages/mock-webpack-plugin
+npm run build
+npm link
+
+# 2. 如果需要测试后台
+cd ../mock-admin
+npm run build
+npm link
+
+# 3. 在目标项目中链接
+cd /path/to/your-project
+npm link warehouse-mock
+npm link warehouse-mock-admin
+
+# 4. 运行目标项目
+npm run mock
+
+# 5. 调试完成后，断开软链
+npm unlink warehouse-mock --no-save
+npm unlink warehouse-mock-admin --no-save
+
+# 6. 在插件包中删除全局软链
+cd /path/to/warehouse-mock/packages/mock-webpack-plugin
+npm unlink -g
+
+cd ../mock-admin
+npm unlink -g
+```
+
+**注意事项**:
+- 每次修改插件代码后，需要重新 `npm run build`
+- 软链只用于开发调试，发布前务必断开
+- 如果遇到 `EADDRINUSE` 错误，检查是否有旧进程占用端口：
+  ```bash
+  lsof -ti:8080 | xargs kill -9   # 清理前端端口
+  lsof -ti:3100 | xargs kill -9   # 清理后台端口
+  ```
+
+---
+
+## 📁 Mock 数据存储结构
+
+### 核心设计理念
+Warehouse Mock 使用**接口级目录 + 场景文件**的分层结构，实现接口配置与 Mock 数据分离。
+
+### 数据结构详解
+
+#### 1. 单场景接口（向后兼容）
+```
+warehouseMock/
+└── demo.json                 # 旧版单文件格式，仍然支持
+```
+
+#### 2. 多场景接口（推荐）
+```
+warehouseMock/
+└── user.account.getInfo/     # 接口目录（接口名）
+    ├── .config.json          # 接口级配置（必需）
+    ├── default.json          # 默认场景数据
+    ├── success.json          # 成功场景数据
+    └── error.json            # 错误场景数据
+```
+
+**`.config.json` 格式**:
+```json
+{
+  "name": "user.account.getInfo",      // 接口名称
+  "delay": 1000,                        // 响应延时（毫秒）
+  "enabled": true,                      // 是否启用 Mock
+  "activeScene": "default"              // 当前激活的场景名称
+}
+```
+
+**场景文件格式** (`default.json`, `success.json` 等):
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "userId": 12345,
+    "userName": "测试用户"
+  }
+}
+```
+
+### 文件命名规则
+
+#### RPC 风格接口（推荐用于 hellobike 项目）
+| 请求格式 | 目录结构 |
+|---------|---------|
+| `/mock-api?user.account.getInfo` | `warehouseMock/user.account.getInfo/` |
+| `/mock-api?order.create` | `warehouseMock/order.create/` |
+
+#### RESTful 风格接口
+| 请求格式 | 目录结构（扁平化） | 目录结构（嵌套） |
+|---------|-------------------|-----------------|
+| `/api/user/info` | `warehouseMock/api_user_info/` | `warehouseMock/api/user/info/` |
+
+### 插件数据加载逻辑
+```typescript
+// 插件查找顺序：
+1. 尝试读取 `接口名/.config.json`
+2. 如果存在 .config.json：
+   - 检查 `enabled` 字段，决定是否启用 Mock
+   - 读取 `activeScene` 字段，加载对应场景文件
+   - 应用 `delay` 延时
+3. 如果不存在 .config.json：
+   - 回退到旧格式，查找 `接口名.json`
+4. 如果都不存在：
+   - 跳过 Mock，请求继续向下传递（可能被代理转发）
+```
+
+---
+
+## 🚀 项目接入指南
+
+### 插件配置选项完整参考
+
 ```javascript
 new WarehouseMockPlugin({
-  // 必填：mock 数据存放目录
+  // 必填：Mock 数据目录路径
   mockPath: path.resolve(__dirname, 'warehouseMock'),
   
   // 可选：需要拦截的 API 路径前缀，默认 ['/api', '/mock-api']
   apiPrefixes: ['/api', '/mock-api'],
+  
+  // 可选：本地代理路径前缀，默认 '/mock-api'
+  localApiPrefix: '/mock-api',
+  
+  // 可选：是否启用插件，默认 true
+  enabled: true,
+  
+  // 可选：代理配置（未匹配的请求转发到真实 API）
+  proxy: {
+    target: 'https://fat-api.hellobike.com',
+    changeOrigin: true,
+  },
+  
+  // 可选：是否自动注入环境变量 VUE_APP_MOCK，默认 true
+  injectEnv: true,
+  
+  // 可选：全局响应延迟（毫秒），默认 0
+  delay: 0,
+  
+  // 可选：管理后台配置
+  admin: {
+    enabled: true,   // 是否启用后台，默认 true
+    port: 3100,      // 后台端口，默认 3100
+  }
 })
 ```
 
----
-
-## 接入场景
-
-### 场景一：标准 Vue CLI 5 项目 (Webpack 5)
+### 场景一：Vue CLI 5 项目（Webpack 5）⭐ 最新
 
 ```javascript
 // vue.config.js
-const WarehouseMockPlugin = require('warehouse-mock-plugin');
+const WarehouseMockPlugin = require('warehouse-mock');
 const path = require('path');
 
 const isMock = process.env.MOCK === 'true';
 const mockPlugin = isMock ? new WarehouseMockPlugin({
   mockPath: path.resolve(__dirname, 'warehouseMock'),
+  admin: { enabled: true, port: 3100 }
 }) : null;
 
 module.exports = {
@@ -69,92 +298,79 @@ module.exports = {
 };
 ```
 
-### 场景二：Vue CLI 3-4 项目 (Webpack 4)
+**package.json**:
+```json
+{
+  "scripts": {
+    "mock": "MOCK=true vue-cli-service serve"
+  }
+}
+```
+
+### 场景二：Vue CLI 3-4 项目（Webpack 4）⚠️ 旧版本
 
 ```javascript
 // vue.config.js
-const WarehouseMockPlugin = require('warehouse-mock-plugin');
-const path = require('path');
-
-const isMock = process.env.MOCK === 'true';
-const mockPlugin = isMock ? new WarehouseMockPlugin({
-  mockPath: path.resolve(__dirname, 'warehouseMock'),
-}) : null;
-
-module.exports = {
-  configureWebpack: config => {
-    if (isMock && mockPlugin) {
-      config.plugins.push(mockPlugin);
-    }
-  },
-  devServer: {
-    // Vue CLI 3-4 使用 before 钩子
-    before: isMock && mockPlugin ? (app) => mockPlugin.runBefore(app) : undefined,
-  }
-};
-```
-
-### 场景三：外部 API 域名项目 (如 hellobike) ⭐ 推荐
-
-对于 API 请求发往外部域名的项目（如 `https://fat-api.hellobike.com/api?xxx`），这是**最常见**的接入场景。
-
-**完整配置示例**：
-
-#### 1. vue.config.js
-```javascript
-const WarehouseMockPlugin = require('warehouse-mock-plugin');
+const WarehouseMockPlugin = require('warehouse-mock');
 const webpack = require('webpack');
 const path = require('path');
 
 const isMock = process.env.MOCK === 'true';
 const mockPlugin = isMock ? new WarehouseMockPlugin({
   mockPath: path.resolve(__dirname, 'warehouseMock'),
-  apiPrefixes: ['/mock-api'],
-  localApiPrefix: '/mock-api',
+  admin: { enabled: true, port: 3100 }
 }) : null;
 
 module.exports = {
   configureWebpack: config => {
     if (isMock && mockPlugin) {
-      // 注入环境变量
+      // Webpack 4 需要手动注入环境变量
       config.plugins.push(
         new webpack.DefinePlugin({
           'process.env.VUE_APP_MOCK': JSON.stringify('true'),
         })
       );
-      // 添加插件
       config.plugins.push(mockPlugin);
     }
   },
   devServer: {
-    // Vue CLI 3.x/4.x (Webpack 4) 使用 before
+    // Webpack 4 使用 before 钩子
     before: isMock && mockPlugin ? (app) => mockPlugin.runBefore(app) : undefined,
-    
-    // Vue CLI 5.x (Webpack 5) 使用 setupMiddlewares
-    // setupMiddlewares: (middlewares, devServer) => {
-    //   if (isMock && mockPlugin) {
-    //     return mockPlugin.setupMiddlewares(middlewares, devServer);
-    //   }
-    //   return middlewares;
-    // }
   }
 };
 ```
 
-#### 2. src/const/config.js (关键！)
+**package.json**:
+```json
+{
+  "scripts": {
+    "mock:fat": "NODE_OPTIONS=--openssl-legacy-provider MOCK=true NODE_ENV=fat vue-cli-service serve"
+  }
+}
+```
+
+### 场景三：外部 API 项目（hellobike）⭐⭐⭐ 最常用
+
+**适用场景**: API 请求发往外部域名（如 `https://fat-api.hellobike.com/api?xxx`）
+
+**配置步骤**:
+
+#### 1. vue.config.js（同场景二）
+
+#### 2. src/const/config.js（关键！）
 ```javascript
 const config = { env: process.env.VUE_APP_ENV || 'dev' };
 
-// ⭐ 必须在最前面判断 Mock 模式
+// ⚠️ 必须在最前面判断 Mock 模式
 if (process.env.VUE_APP_MOCK === 'true') {
   Object.assign(config, {
-    API: '/mock-api',
+    API: '/mock-api',           // ⚠️ 必须改为本地路径
     EBIKE_API: '/mock-api',
     BIKE_API: '/mock-api',
     MARKET_API: '/mock-api',
   });
   console.log('[WarehouseMock] API 已切换到 Mock 模式');
-} else if (process.env.VUE_APP_ENV === 'dev') {
+} else if (process.env.VUE_APP_ENV === 'fat') {
   Object.assign(config, {
     API: 'https://fat-api.hellobike.com/api',
     EBIKE_API: 'https://fat-ebike.hellobike.com/api',
@@ -166,70 +382,70 @@ export default config;
 ```
 
 **为什么需要这样配置？**
-- 外部 API（如 `https://fat-api.hellobike.com`）不会经过 webpack dev server
-- 必须将 API 地址改为本地路径（`/mock-api`），请求才会被插件拦截
-- `VUE_APP_MOCK` 环境变量用于判断是否启用 Mock 模式
+- 外部 API 不会经过 webpack dev server，插件无法拦截
+- 必须将 API 地址改为本地路径（如 `/mock-api`），请求才会被插件中间件拦截
+- `VUE_APP_MOCK` 环境变量由插件自动注入（或手动注入），用于控制 API 地址切换
 
 ---
 
-## 激活 Mock 模式
+## 🎨 可视化管理后台使用指南
 
-在 `package.json` 中添加脚本：
-```json
-{
-  "scripts": {
-    "mock": "MOCK=true vue-cli-service serve"
-  }
-}
-```
+### 启动后台
+1. 在 `vue.config.js` 中配置 `admin: { enabled: true, port: 3100 }`
+2. 运行 `npm run mock`
+3. 控制台会输出后台访问链接：`http://localhost:3100`
 
-运行：
-```bash
-npm run mock
-```
+### 功能详解
 
----
+#### 1. 接口列表
+- **搜索**: 支持接口名称模糊搜索
+- **状态过滤**: 可选"全部"、"已启用"、"已禁用"
+- **状态开关**: 点击开关可快速启用/禁用接口 Mock
 
-## Mock 数据文件规则
+#### 2. 创建接口
+点击右上角"添加接口"按钮：
+- **接口名称**: 填写完整接口名（如 `user.account.getInfo`）
+- **接口延时**: 模拟网络延迟（毫秒，默认 0）
+- **Mock 开启**: 是否启用 Mock（默认启用）
 
-### 1. RPC 风格接口 (推荐用于 hellobike 项目)
+**创建后**:
+- 自动生成接口目录 `warehouseMock/接口名/`
+- 自动生成 `.config.json` 配置文件
+- 自动生成 `default.json` 默认场景文件（空对象）
 
-| 请求格式 | Mock 文件名 |
-|---------|-----------|
-| `/mock-api?user.account.getInfo` | `warehouseMock/user.account.getInfo.json` |
-| `/mock-api?user.taurus.pointInfo` | `warehouseMock/user.taurus.pointInfo.json` |
-| `/mock-api?common.welfare.banner.query` | `warehouseMock/common.welfare.banner.query.json` |
+#### 3. 修改接口配置
+点击接口列表项右侧的"修改配置"按钮：
+- 可修改接口名称（会重命名整个目录）
+- 可修改延时时间
+- 可修改启用状态
 
-**文件内容示例**：
-```json
-{
-  "code": 0,
-  "msg": "success",
-  "data": {
-    "userId": 12345,
-    "userName": "Mock 测试用户"
-  }
-}
-```
+#### 4. 添加场景
+点击接口列表项右侧的"添加"按钮，打开侧边栏：
+- **场景名称**: 填写场景标识（如 `success`, `error`）
+- **场景数据**: 填写 JSON 格式的 Mock 数据
 
-### 2. RESTful 风格接口
+#### 5. 编辑场景
+点击场景标签右侧的"编辑"图标：
+- 可修改场景名称（会重命名 JSON 文件）
+- 可修改场景数据
 
-| 请求格式 | Mock 文件名（二选一） |
-|---------|---------------------|
-| `/api/user/info` | `warehouseMock/api_user_info.json` (扁平化) |
-| `/api/user/info` | `warehouseMock/api/user/info.json` (嵌套) |
+#### 6. 切换活动场景
+点击场景标签选择当前激活的场景：
+- 选中的场景会显示为高亮
+- 插件会自动加载该场景的 Mock 数据
+- 刷新前端页面即可生效（无需重启服务）
 
-### 重要特性
-
-✅ **自动创建**: 首次运行 `npm run mock` 时，会自动创建 `warehouseMock` 目录和示例文件  
-✅ **实时更新**: 修改 Mock 数据后，刷新浏览器即可看到效果，无需重启服务  
-✅ **按需 Mock**: 只有存在 Mock 文件的接口才会被拦截，其他接口不受影响
+#### 7. 删除场景
+点击场景标签右侧的"删除"图标：
+- ⚠️ 如果删除的是当前激活场景，会自动切换到第一个可用场景
 
 ---
 
-## 调试工具
+## 🧪 调试与测试
 
-### 查看可用 Mock 列表
+### 内置调试工具
+
+#### 1. 查看可用 Mock 列表
 访问: `http://localhost:8080/__mock_list__`
 
 返回示例:
@@ -237,73 +453,265 @@ npm run mock
 {
   "mockList": [
     "user.account.getInfo",
-    "user.taurus.pointInfo",
-    "common.welfare.banner.query"
+    "user.taurus.pointInfo"
   ],
   "localApiPrefix": "/mock-api"
 }
 ```
 
-### 直接访问 Mock 数据
+#### 2. 直接访问 Mock 数据
 访问: `http://localhost:8080/mock-api?user.account.getInfo`
 
-直接查看某个接口的 Mock 数据。
+直接查看该接口当前激活场景的 Mock 数据。
 
 ### 浏览器控制台调试
 ```javascript
 // 查看当前模式
 console.log('Mock 模式:', process.env.VUE_APP_MOCK);
+
+// 查看 API 地址
 console.log('API 地址:', config.API);
+
+// 网络面板查看请求
+// Mock 请求会返回 200，且 Response Header 包含 X-Mock: true
 ```
+
+### 常见调试技巧
+
+1. **检查环境变量注入**
+   ```javascript
+   // 在 main.js 最前面添加
+   console.log('[Debug] VUE_APP_MOCK:', process.env.VUE_APP_MOCK);
+   console.log('[Debug] API:', config.API);
+   ```
+
+2. **检查 Mock 文件路径**
+   - 打开管理后台 `http://localhost:3100` 查看接口列表
+   - 确认目录结构和 `.config.json` 存在
+
+3. **检查端口占用**
+   ```bash
+   # macOS/Linux
+   lsof -ti:8080 | xargs kill -9   # 清理前端端口
+   lsof -ti:3100 | xargs kill -9   # 清理后台端口
+   ```
 
 ---
 
-## 常见问题
+## 📦 发布流程
 
-### Q1: Mock 没有生效？
-**症状**: 请求仍然发往外部 API（如 `https://fat-api.hellobike.com`）
+### 前置准备
+
+1. **确保已登录 npm**
+   ```bash
+   npm login
+   npm whoami   # 确认当前登录用户
+   ```
+
+2. **确保代码已提交**
+   ```bash
+   git add .
+   git commit -m "chore: 准备发布 vX.X.X"
+   git push origin main
+   ```
+
+3. **构建所有包**
+   ```bash
+   # 构建插件
+   npm run build --workspace=packages/mock-webpack-plugin
+   
+   # 构建后台
+   cd packages/mock-admin
+   npm run build
+   cd ../..
+   ```
+
+### 发布命令
+
+#### 方式一：交互式发布（推荐）
+```bash
+npx lerna publish
+```
+
+**流程**:
+1. Lerna 自动检测变更的包
+2. 提示选择版本号（patch/minor/major）
+3. 生成 changelog（如果配置了）
+4. 创建 Git tag
+5. 推送到 npm registry
+6. 推送 tag 到 Git
+
+#### 方式二：强制发布所有包
+```bash
+npx lerna publish --force-publish
+```
+
+#### 方式三：从 package.json 发布
+```bash
+npx lerna publish from-package
+```
+
+**使用场景**: 当 Git 无变更但需要重新发布时（如修复发布失败）
+
+### 发布注意事项
+
+1. **npm 双因素认证（2FA）**
+   - 如果启用了 2FA，发布时会要求输入 OTP（一次性密码）
+   - OTP 从认证器 App（如 Google Authenticator）获取
+   - 命令: `npx lerna publish --otp=123456`
+
+2. **版本号规则**
+   - `patch`: 1.0.0 → 1.0.1（修复 bug）
+   - `minor`: 1.0.0 → 1.1.0（新功能，向后兼容）
+   - `major`: 1.0.0 → 2.0.0（破坏性变更）
+
+3. **example-vue2 不会被发布**
+   - 已标记 `"private": true`
+   - Lerna 自动跳过私有包
+
+4. **依赖关系**
+   - `warehouse-mock` 依赖 `warehouse-mock-admin`（optionalDependencies）
+   - 用户只需安装 `warehouse-mock`，后台会自动安装
+
+---
+
+## ❓ 常见问题与解决方案
+
+### Q1: Mock 没有生效，请求仍然发往外部 API？
+
+**症状**: 请求仍然发往 `https://fat-api.hellobike.com`
 
 **原因**: `src/const/config.js` 中没有判断 `VUE_APP_MOCK`
 
-**解决**: 确保在 config.js 最前面加上：
+**解决**:
 ```javascript
+// ⚠️ 必须在最前面判断
 if (process.env.VUE_APP_MOCK === 'true') {
   config.API = '/mock-api';
 }
 ```
 
 ### Q2: 修改 Mock 数据后没有更新？
-**解决**: 
-1. 强制刷新浏览器 (Ctrl+Shift+R)
-2. 检查文件名是否与接口名完全一致
 
-### Q3: 如何添加新的 Mock 接口？
-**步骤**:
-1. 在 `warehouseMock/` 目录创建 `接口名.json` 文件
-2. 刷新浏览器即可（无需重启 `npm run mock`）
+**解决**:
+1. 确认文件已保存
+2. 强制刷新浏览器（Ctrl+Shift+R 或 Cmd+Shift+R）
+3. 检查浏览器控制台是否有报错
+4. 检查网络面板，确认请求返回了新数据
 
----
+### Q3: 管理后台无法访问（404 或白屏）？
 
-## 示例项目
+**可能原因**:
+1. **后台未启用**: 检查 `vue.config.js` 中 `admin: { enabled: true }`
+2. **端口被占用**: 运行 `lsof -ti:3100 | xargs kill -9`
+3. **未安装 warehouse-mock-admin**: 运行 `npm install warehouse-mock-admin`
 
-查看 `packages/example-vue2/` 获取完整的使用示例，包括：
-- ✅ 完整的项目结构
-- ✅ RPC 风格接口调用
-- ✅ 多个 Mock 接口示例
-- ✅ 错误处理和加载状态
+### Q4: Webpack 4 项目报错 `DefinePlugin` 相关？
 
-运行示例：
-```bash
-cd packages/example-vue2
-npm install
-npm run mock
+**解决**: 手动注入环境变量
+```javascript
+// vue.config.js
+config.plugins.push(
+  new webpack.DefinePlugin({
+    'process.env.VUE_APP_MOCK': JSON.stringify('true'),
+  })
+);
 ```
 
-访问: http://localhost:8080
+### Q5: 如何添加新的 Mock 接口？
+
+**方式一（推荐）**: 通过管理后台
+1. 访问 `http://localhost:3100`
+2. 点击"添加接口"
+3. 填写接口名称、延时、启用状态
+
+**方式二**: 手动创建文件
+```bash
+mkdir warehouseMock/new.api.name
+echo '{"name":"new.api.name","delay":0,"enabled":true,"activeScene":"default"}' > warehouseMock/new.api.name/.config.json
+echo '{"code":0,"data":{}}' > warehouseMock/new.api.name/default.json
+```
+
+### Q6: 多个 API 域名如何配置代理？
+
+**场景**: 项目有 `API`, `EBIKE_API`, `BIKE_API` 等多个域名
+
+**解决**: 将所有域名统一指向 `/mock-api`
+```javascript
+// src/const/config.js
+if (process.env.VUE_APP_MOCK === 'true') {
+  config.API = '/mock-api';
+  config.EBIKE_API = '/mock-api';
+  config.BIKE_API = '/mock-api';
+}
+```
+
+### Q7: Lerna 发布提示"No changed packages"？
+
+**原因**: 当前 HEAD 无变更，Lerna 跳过发布
+
+**解决**:
+```bash
+npx lerna publish from-package
+```
+
+### Q8: Node.js v12 报错"Unexpected token '.'"？
+
+**原因**: 旧版本 Node.js 不支持可选链（`?.`）
+
+**解决**: 已修复，`mock-admin` 编译目标改为 ES2015
 
 ---
 
-## 贡献开发
-- 在根目录运行 `npm install` 以设置依赖项
-- 运行 `npm run build --workspace=packages/mock-webpack-plugin` 以构建插件
-- 运行 `cd packages/example-vue2 && npm run mock` 以测试示例项目
+## 🔮 未来改进建议
+
+### 短期优化
+- [ ] 支持 Mock 数据热更新（无需刷新浏览器）
+- [ ] 支持 Mock 数据导入/导出（JSON/Excel）
+- [ ] 支持 Mock 数据版本管理（Git 集成）
+- [ ] 支持 MockJS 语法生成随机数据
+
+### 中期目标
+- [ ] 支持 Vite 项目
+- [ ] 支持 React/Next.js 项目
+- [ ] 支持 GraphQL Mock
+- [ ] 支持 WebSocket Mock
+- [ ] 支持远程 Mock 数据源（API）
+
+### 长期规划
+- [ ] 支持团队协作（多人共享 Mock 配置）
+- [ ] 支持 Mock 数据云存储
+- [ ] 支持 Mock 数据录制与回放
+- [ ] 支持 AI 生成 Mock 数据
+
+---
+
+## 🤝 贡献指南
+
+### 开发工作流
+
+1. **Fork 并克隆项目**
+2. **创建特性分支**: `git checkout -b feature/your-feature`
+3. **开发并构建**: `npm run build --workspace=packages/mock-webpack-plugin`
+4. **测试**: `cd packages/example-vue2 && npm run mock`
+5. **提交**: `git commit -m "feat: 添加新功能"`
+6. **推送**: `git push origin feature/your-feature`
+7. **创建 Pull Request**
+
+### 代码规范
+- 使用 TypeScript 编写核心逻辑
+- 遵循 ESLint 和 Prettier 规则
+- 提交信息遵循 Conventional Commits 规范
+
+---
+
+## 📚 相关资源
+
+- **npm 包**: [warehouse-mock](https://www.npmjs.com/package/warehouse-mock)
+- **GitHub**: [warehouse-mock](https://github.com/your-org/warehouse-mock)
+- **示例项目**: `packages/example-vue2`
+
+---
+
+**最后更新**: 2025-12-23  
+**维护者**: Warehouse Mock Team
