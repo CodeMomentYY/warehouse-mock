@@ -7,8 +7,10 @@ const path_1 = __importDefault(require("path"));
 const chalk_1 = __importDefault(require("chalk"));
 class WarehouseMockPlugin {
     constructor(options = {}) {
+        var _a, _b;
         this.resolvedMockPath = '';
         this.isEnabled = true;
+        this.adminServer = null;
         // 默认配置
         this.options = {
             mockPath: options.mockPath || 'warehouseMock',
@@ -18,6 +20,10 @@ class WarehouseMockPlugin {
             proxy: options.proxy || undefined,
             injectEnv: options.injectEnv !== undefined ? options.injectEnv : true,
             delay: options.delay || 0,
+            admin: {
+                enabled: ((_a = options.admin) === null || _a === void 0 ? void 0 : _a.enabled) !== undefined ? options.admin.enabled : true,
+                port: ((_b = options.admin) === null || _b === void 0 ? void 0 : _b.port) || 3100,
+            },
         };
         // 判断是否启用（支持环境变量控制）
         if (process.env.MOCK === 'false' || process.env.VUE_APP_MOCK === 'false') {
@@ -79,9 +85,54 @@ class WarehouseMockPlugin {
         if (this.options.proxy) {
             console.log(chalk_1.default.cyan(`[WarehouseMock] 代理模式: 未匹配请求 → ${this.options.proxy.target}`));
         }
+        // 启动管理后台
+        if (this.options.admin && this.options.admin.enabled) {
+            this.startAdminServer();
+        }
         // 注意：devServer 的配置需要在 vue.config.js 中手动配置
         // 对于 Webpack 5 使用 setupMiddlewares
         // 对于 Webpack 4 使用 before
+    }
+    /**
+     * 启动管理后台服务
+     */
+    startAdminServer() {
+        var _a;
+        try {
+            // 动态导入管理后台服务
+            let createAdminServer;
+            try {
+                // 尝试导入已安装的包
+                createAdminServer = require('warehouse-mock-admin').createAdminServer;
+            }
+            catch (e) {
+                // 如果找不到，尝试相对路径（开发环境）
+                const adminPath = require('path').resolve(__dirname, '../../mock-admin/dist/server/index.js');
+                createAdminServer = require(adminPath).createAdminServer;
+            }
+            if (!createAdminServer) {
+                throw new Error('无法加载管理后台模块');
+            }
+            const adminResult = createAdminServer({
+                mockPath: this.resolvedMockPath,
+                port: ((_a = this.options.admin) === null || _a === void 0 ? void 0 : _a.port) || 3100,
+            });
+            this.adminServer = adminResult;
+            console.log(chalk_1.default.green(`\n╭────────────────────────────────────────────────────╮`));
+            console.log(chalk_1.default.green(`│  🎨 Mock 数据管理后台已启动                          │`));
+            console.log(chalk_1.default.green(`│                                                    │`));
+            console.log(chalk_1.default.green(`│  ➜  访问地址: ${chalk_1.default.cyan(adminResult.url).padEnd(31)} │`));
+            console.log(chalk_1.default.green(`│                                                    │`));
+            console.log(chalk_1.default.green(`│  在浏览器中打开上面的地址来管理 Mock 数据            │`));
+            console.log(chalk_1.default.green(`╰────────────────────────────────────────────────────╯\n`));
+        }
+        catch (err) {
+            console.log(chalk_1.default.yellow('[WarehouseMock] 管理后台包未安装或加载失败，跳过启动'));
+            console.log(chalk_1.default.gray('  提示：运行 npm install warehouse-mock-admin 来安装管理后台'));
+            if (err.message && !err.message.includes('Cannot find module')) {
+                console.log(chalk_1.default.gray(`  错误详情: ${err.message}`));
+            }
+        }
     }
     /**
      * 自动注入环境变量 VUE_APP_MOCK
@@ -186,6 +237,20 @@ class WarehouseMockPlugin {
             console.error(chalk_1.default.yellow(`[WarehouseMock] 创建示例文件失败: ${e}`));
         }
     }
+    // 读取接口配置
+    readInterfaceConfig(apiName, mockPath) {
+        const configPath = path_1.default.join(mockPath, apiName, '.config.json');
+        if (fs_1.default.existsSync(configPath)) {
+            try {
+                const content = fs_1.default.readFileSync(configPath, 'utf-8');
+                return JSON.parse(content);
+            }
+            catch (e) {
+                return null;
+            }
+        }
+        return null;
+    }
     handleRequest(req, res, next, mockPath) {
         var _a, _b, _c;
         const url = req.path || ((_a = req.url) === null || _a === void 0 ? void 0 : _a.split('?')[0]);
@@ -218,29 +283,123 @@ class WarehouseMockPlugin {
         let filePath = '';
         let matched = false;
         let matchedName = '';
+        let interfaceConfig = null;
         // 1. 优先尝试 Query String 匹配 (RPC 风格接口，如 /api?user.taurus.pointInfo)
         if (req.url && req.url.includes('?')) {
             const queryPart = req.url.split('?')[1];
             if (queryPart) {
                 const params = new URLSearchParams(queryPart);
                 for (const key of params.keys()) {
-                    // 尝试匹配 key.json (例如 user.taurus.pointInfo.json)
-                    const queryFilePath = path_1.default.join(mockPath, `${key}.json`);
-                    if (fs_1.default.existsSync(queryFilePath) && fs_1.default.statSync(queryFilePath).isFile()) {
-                        filePath = queryFilePath;
-                        matchedName = key;
-                        matched = true;
-                        break;
+                    // 先尝试目录模式（优先，支持多场景）
+                    const dirPath = path_1.default.join(mockPath, key);
+                    if (fs_1.default.existsSync(dirPath) && fs_1.default.statSync(dirPath).isDirectory()) {
+                        // 读取接口配置（新格式）
+                        const config = this.readInterfaceConfig(key, mockPath);
+                        if (config) {
+                            // 新格式：检查是否启用
+                            if (config.enabled === false) {
+                                console.log(chalk_1.default.yellow(`[WarehouseMock] ✗ 接口已禁用: ${key}`));
+                                break; // 接口被禁用，不拦截
+                            }
+                            // 根据 activeScene 读取场景文件
+                            const activeScene = config.activeScene || 'default';
+                            const sceneFilePath = path_1.default.join(dirPath, `${activeScene}.json`);
+                            if (fs_1.default.existsSync(sceneFilePath)) {
+                                filePath = sceneFilePath;
+                                matchedName = key;
+                                matched = true;
+                                interfaceConfig = config;
+                                break;
+                            }
+                        }
+                        else {
+                            // 旧格式：查找 mock: true 的文件（向后兼容）
+                            const files = fs_1.default.readdirSync(dirPath).filter(f => f.endsWith('.json') && f !== '.config.json');
+                            for (const file of files) {
+                                const fullPath = path_1.default.join(dirPath, file);
+                                try {
+                                    const content = fs_1.default.readFileSync(fullPath, 'utf-8');
+                                    const jsonData = JSON.parse(content);
+                                    if (jsonData.mock === true) {
+                                        filePath = fullPath;
+                                        matchedName = key;
+                                        matched = true;
+                                        break;
+                                    }
+                                }
+                                catch (e) {
+                                    // 文件解析失败，跳过
+                                }
+                            }
+                            if (matched)
+                                break;
+                        }
+                    }
+                    // 再尝试单文件模式（向后兼容）
+                    if (!matched) {
+                        const queryFilePath = path_1.default.join(mockPath, `${key}.json`);
+                        if (fs_1.default.existsSync(queryFilePath) && fs_1.default.statSync(queryFilePath).isFile()) {
+                            filePath = queryFilePath;
+                            matchedName = key;
+                            matched = true;
+                            break;
+                        }
                     }
                     // 也尝试匹配 value (例如 method=user.taurus.pointInfo)
                     const value = params.get(key);
-                    if (value) {
-                        const valueFilePath = path_1.default.join(mockPath, `${value}.json`);
-                        if (fs_1.default.existsSync(valueFilePath) && fs_1.default.statSync(valueFilePath).isFile()) {
-                            filePath = valueFilePath;
-                            matchedName = value;
-                            matched = true;
-                            break;
+                    if (value && !matched) {
+                        const valueDirPath = path_1.default.join(mockPath, value);
+                        if (fs_1.default.existsSync(valueDirPath) && fs_1.default.statSync(valueDirPath).isDirectory()) {
+                            // 读取接口配置（新格式）
+                            const config = this.readInterfaceConfig(value, mockPath);
+                            if (config) {
+                                // 新格式：检查是否启用
+                                if (config.enabled === false) {
+                                    console.log(chalk_1.default.yellow(`[WarehouseMock] ✗ 接口已禁用: ${value}`));
+                                    break;
+                                }
+                                // 根据 activeScene 读取场景文件
+                                const activeScene = config.activeScene || 'default';
+                                const sceneFilePath = path_1.default.join(valueDirPath, `${activeScene}.json`);
+                                if (fs_1.default.existsSync(sceneFilePath)) {
+                                    filePath = sceneFilePath;
+                                    matchedName = value;
+                                    matched = true;
+                                    interfaceConfig = config;
+                                    break;
+                                }
+                            }
+                            else {
+                                // 旧格式：查找 mock: true 的文件（向后兼容）
+                                const files = fs_1.default.readdirSync(valueDirPath).filter(f => f.endsWith('.json') && f !== '.config.json');
+                                for (const file of files) {
+                                    const fullPath = path_1.default.join(valueDirPath, file);
+                                    try {
+                                        const content = fs_1.default.readFileSync(fullPath, 'utf-8');
+                                        const jsonData = JSON.parse(content);
+                                        if (jsonData.mock === true) {
+                                            filePath = fullPath;
+                                            matchedName = value;
+                                            matched = true;
+                                            break;
+                                        }
+                                    }
+                                    catch (e) {
+                                        // 跳过
+                                    }
+                                }
+                                if (matched)
+                                    break;
+                            }
+                        }
+                        if (!matched) {
+                            const valueFilePath = path_1.default.join(mockPath, `${value}.json`);
+                            if (fs_1.default.existsSync(valueFilePath) && fs_1.default.statSync(valueFilePath).isFile()) {
+                                filePath = valueFilePath;
+                                matchedName = value;
+                                matched = true;
+                                break;
+                            }
                         }
                     }
                 }
@@ -275,21 +434,38 @@ class WarehouseMockPlugin {
         }
         if (matched) {
             console.log(chalk_1.default.green(`[WarehouseMock] ✓ 拦截: ${req.url || url}`));
-            console.log(chalk_1.default.gray(`  → 返回: ${path_1.default.basename(filePath)}`));
+            // 获取延时配置（优先使用接口级别的 delay）
+            const delayTime = (interfaceConfig === null || interfaceConfig === void 0 ? void 0 : interfaceConfig.delay) !== undefined
+                ? interfaceConfig.delay
+                : this.options.delay || 0;
+            // 获取场景名称
+            const sceneName = (interfaceConfig === null || interfaceConfig === void 0 ? void 0 : interfaceConfig.activeScene) || path_1.default.basename(filePath, '.json');
+            console.log(chalk_1.default.gray(`  → 场景: ${sceneName}`));
+            if (delayTime > 0) {
+                console.log(chalk_1.default.gray(`  → 延迟: ${delayTime}ms`));
+            }
             // 模拟网络延迟
             const respond = () => {
                 try {
-                    const data = fs_1.default.readFileSync(filePath, 'utf-8');
+                    const fileContent = fs_1.default.readFileSync(filePath, 'utf-8');
                     try {
-                        const jsonData = JSON.parse(data);
+                        const jsonData = JSON.parse(fileContent);
+                        // 新格式：纯净的场景数据（不包含 mock、scene、delay 等元数据）
+                        // 旧格式：包含 mock、scene、delay、data 字段
+                        let responseData = jsonData;
+                        // 兼容旧格式
+                        if (jsonData.mock !== undefined && jsonData.data !== undefined) {
+                            responseData = jsonData.data;
+                        }
                         res.setHeader('Content-Type', 'application/json');
                         res.setHeader('X-Mock-By', 'WarehouseMock');
-                        res.end(JSON.stringify(jsonData));
+                        res.setHeader('X-Mock-Scene', sceneName);
+                        res.end(JSON.stringify(responseData));
                     }
                     catch (jsonErr) {
                         console.warn(chalk_1.default.yellow(`[WarehouseMock] 无效的 JSON 文件: ${filePath}`));
                         res.setHeader('Content-Type', 'text/plain');
-                        res.end(data);
+                        res.end(fileContent);
                     }
                 }
                 catch (e) {
@@ -298,8 +474,9 @@ class WarehouseMockPlugin {
                     res.end('Mock Read Error');
                 }
             };
-            if (this.options.delay > 0) {
-                setTimeout(respond, this.options.delay);
+            // 应用延迟
+            if (delayTime > 0) {
+                setTimeout(respond, delayTime);
             }
             else {
                 respond();

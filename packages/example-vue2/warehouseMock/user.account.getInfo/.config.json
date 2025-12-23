@@ -1,0 +1,6 @@
+{
+  "name": "user.account.getInfo",
+  "delay": 1000,
+  "enabled": true,
+  "activeScene": "default"
+}

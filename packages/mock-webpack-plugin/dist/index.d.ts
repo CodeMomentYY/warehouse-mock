@@ -10,11 +10,16 @@ interface MockPluginOptions {
     };
     injectEnv?: boolean;
     delay?: number;
+    admin?: {
+        enabled?: boolean;
+        port?: number;
+    };
 }
 declare class WarehouseMockPlugin {
     private options;
     private resolvedMockPath;
     private isEnabled;
+    private adminServer;
     constructor(options?: MockPluginOptions);
     /**
      * 实时扫描 mock 目录，获取所有 mock 文件名列表
@@ -25,6 +30,10 @@ declare class WarehouseMockPlugin {
      */
     getLocalApiPrefix(): string;
     apply(compiler: Compiler): void;
+    /**
+     * 启动管理后台服务
+     */
+    private startAdminServer;
     /**
      * 自动注入环境变量 VUE_APP_MOCK
      */
@@ -40,6 +49,7 @@ declare class WarehouseMockPlugin {
     private getResolvedMockPath;
     private ensureMockDirectory;
     private createDemoFile;
+    private readInterfaceConfig;
     private handleRequest;
     /**
      * 代理请求到真实 API（改进版）
