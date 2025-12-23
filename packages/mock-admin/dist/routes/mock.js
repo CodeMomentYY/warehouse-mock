@@ -57,9 +57,9 @@ function createMockRouter(mockPath) {
                     if (scenes.length > 0 || config) {
                         mockList.push({
                             name: item,
-                            delay: config?.delay || 0,
-                            enabled: config?.enabled !== false,
-                            activeScene: config?.activeScene || 'default',
+                            delay: (config === null || config === void 0 ? void 0 : config.delay) || 0,
+                            enabled: (config === null || config === void 0 ? void 0 : config.enabled) !== false,
+                            activeScene: (config === null || config === void 0 ? void 0 : config.activeScene) || 'default',
                             scenes,
                             updatedAt: stat.mtime.toISOString()
                         });
@@ -163,12 +163,7 @@ function createMockRouter(mockPath) {
                 config.name = newName;
             }
             // 更新配置
-            const newConfig = {
-                ...config,
-                name: newName || oldName,
-                delay: delay !== undefined ? delay : config.delay,
-                enabled: enabled !== undefined ? enabled : config.enabled
-            };
+            const newConfig = Object.assign(Object.assign({}, config), { name: newName || oldName, delay: delay !== undefined ? delay : config.delay, enabled: enabled !== undefined ? enabled : config.enabled });
             writeInterfaceConfig(newName || oldName, newConfig);
             res.json({
                 success: true,
