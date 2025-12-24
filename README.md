@@ -134,8 +134,6 @@ warehouseMock/
 npm run mock
 ```
 
-访问 http://localhost:8080 ，所有匹配的接口将使用本地 Mock 数据！
-
 ---
 
 ## 🎨 Mock 数据文件命名规则
