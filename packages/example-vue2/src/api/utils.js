@@ -1,11 +1,3 @@
-/**
- * API 工具 - 模拟 AppPlatformH5 的 src/api/utils.js
- * 
- * 这里模拟了 hellobike 项目中的 RPC 风格 API 调用：
- * 请求格式: POST {API}?{action}
- * 例如: POST https://fat-api.hellobike.com/api?user.account.getInfo
- */
-
 import axios from 'axios';
 import config from '@/const/config';
 
@@ -66,14 +58,10 @@ export const getPointInfo = easyPost('user.taurus.pointInfo');
 // 会员相关
 export const getMemberInfo = easyPost('member.info.get');
 
-// 福利相关
-export const getWelfareBanner = easyPost('common.welfare.banner.query');
-
 export default {
   getUserInfo,
   getUserProfile,
   getPointInfo,
   getMemberInfo,
-  getWelfareBanner,
 };
 

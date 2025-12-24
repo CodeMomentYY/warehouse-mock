@@ -11,24 +11,17 @@ if (process.env.VUE_APP_MOCK === 'true') {
   console.log('[Config] Mock 模式，API 指向本地');
   Object.assign(config, {
     API: '/mock-api',
-    EBIKE_API: '/mock-api',
-    BIKE_API: '/mock-api',
   });
-} else if (config.env === 'dev' || config.env === 'fat') {
+} else if (config.env === 'dev') {
   // 开发/测试环境：使用外部 API
   Object.assign(config, {
-    API: 'https://fat-api.hellobike.com/api',
-    EBIKE_API: 'https://fat-ebike.hellobike.com/api',
-    BIKE_API: 'https://fat-bike.hellobike.com/api',
+    API: 'https://dev-api.example.com/api',
   });
 } else if (config.env === 'pro') {
   // 生产环境
   Object.assign(config, {
-    API: 'https://api.hellobike.com/api',
-    EBIKE_API: 'https://ebike.hellobike.com/api',
-    BIKE_API: 'https://bike.hellobike.com/api',
+    API: 'https://api.example.com/api',
   });
 }
 
 export default config;
-

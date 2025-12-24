@@ -203,7 +203,7 @@ warehouseMock/
 
 ### 文件命名规则
 
-#### RPC 风格接口（推荐用于 hellobike 项目）
+#### RPC 风格接口
 | 请求格式 | 目录结构 |
 |---------|---------|
 | `/mock-api?user.account.getInfo` | `warehouseMock/user.account.getInfo/` |
@@ -250,7 +250,7 @@ new WarehouseMockPlugin({
   
   // 可选：代理配置（未匹配的请求转发到真实 API）
   proxy: {
-    target: 'https://fat-api.hellobike.com',
+    target: 'https://dev-api.example.com',
     changeOrigin: true,
   },
   
@@ -349,9 +349,9 @@ module.exports = {
 }
 ```
 
-### 场景三：外部 API 项目（hellobike）⭐⭐⭐ 最常用
+### 场景三：外部 API 项目
 
-**适用场景**: API 请求发往外部域名（如 `https://fat-api.hellobike.com/api?xxx`）
+**适用场景**: API 请求发往外部域名（如 `https://dev-api.example.com/api?xxx`）
 
 **配置步骤**:
 
@@ -370,11 +370,9 @@ if (process.env.VUE_APP_MOCK === 'true') {
     MARKET_API: '/mock-api',
   });
   console.log('[WarehouseMock] API 已切换到 Mock 模式');
-} else if (process.env.VUE_APP_ENV === 'fat') {
+} else if (process.env.VUE_APP_ENV === 'dev') {
   Object.assign(config, {
-    API: 'https://fat-api.hellobike.com/api',
-    EBIKE_API: 'https://fat-ebike.hellobike.com/api',
-    BIKE_API: 'https://fat-bike.hellobike.com/api',
+    API: 'https://dev-api.example.com/api',
   });
 }
 
@@ -579,7 +577,7 @@ npx lerna publish from-package
 
 ### Q1: Mock 没有生效，请求仍然发往外部 API？
 
-**症状**: 请求仍然发往 `https://fat-api.hellobike.com`
+**症状**: 请求仍然发往 `https://dev-api.example.com`
 
 **原因**: `src/const/config.js` 中没有判断 `VUE_APP_MOCK`
 

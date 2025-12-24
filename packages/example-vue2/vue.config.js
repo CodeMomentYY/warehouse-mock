@@ -25,7 +25,7 @@ const mockPlugin = isMock ? new WarehouseMockPlugin({
   
   // 代理模式（可选）：未匹配的请求转发到真实 API
   // proxy: {
-  //   target: 'https://fat-api.hellobike.com',
+  //   target: 'https://dev-api.example.com',
   //   changeOrigin: true,
   // }
 }) : null;

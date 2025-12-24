@@ -14,7 +14,7 @@ interface MockPluginOptions {
   enabled?: boolean;
   // 代理配置：未匹配的请求转发到真实 API
   proxy?: {
-    target: string; // 例如 'https://fat-api.hellobike.com'
+    target: string; // 例如 'https://dev-api.example.com'
     changeOrigin?: boolean;
   };
   // 是否自动注入环境变量 VUE_APP_MOCK，默认 true

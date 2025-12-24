@@ -51,7 +51,7 @@
         <li>✅ <strong>零业务侵入</strong> - 只需修改配置文件</li>
         <li>✅ <strong>实时更新</strong> - 修改 Mock 数据后刷新即可</li>
         <li>✅ <strong>按需拦截</strong> - 只拦截配置了 Mock 文件的接口</li>
-        <li>✅ <strong>RPC 风格支持</strong> - 完美支持 hellobike 等 RPC 接口</li>
+        <li>✅ <strong>RPC 风格支持</strong> - 完美支持 App H5 等 RPC 接口</li>
         <li>✅ <strong>代理模式</strong> - 未匹配请求可转发到真实 API</li>
         <li>✅ <strong>极简配置</strong> - vue.config.js 只需 3 行代码</li>
       </ul>

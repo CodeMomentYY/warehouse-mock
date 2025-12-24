@@ -104,7 +104,7 @@ if (process.env.VUE_APP_MOCK === 'true') {
   config.API = '/mock-api';
 } else {
   // 真实环境
-  config.API = 'https://fat-api.hellobike.com/api';
+  config.API = 'https://dev-api.example.com';
 }
 
 export default config;

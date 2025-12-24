@@ -119,7 +119,7 @@ new WarehouseMockPlugin({
 ```javascript
 new WarehouseMockPlugin({
   proxy: {
-    target: 'https://fat-api.hellobike.com',
+    target: 'https://dev-api.xxxx.com',
     changeOrigin: true
   }
 })

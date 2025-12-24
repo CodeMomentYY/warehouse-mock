@@ -4,7 +4,7 @@
 
 一个专为 **Vue CLI** 项目设计的 **Webpack Mock 插件**，零业务代码侵入，完美支持 RPC 风格接口。
 
-[![npm version](https://img.shields.io/npm/v/warehouse-mock-plugin.svg)](https://www.npmjs.com/package/warehouse-mock-plugin)
+[![npm version](https://img.shields.io/npm/v/warehouse-mock.svg)](https://www.npmjs.com/package/warehouse-mock)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 [快速开始](#-快速开始) • [特性](#-核心特性) • [配置](#-配置选项) • [示例](#-示例项目)
@@ -33,7 +33,7 @@
 
 - 🚀 **极简配置** - vue.config.js 只需 3 行代码
 - 🎯 **零业务侵入** - 无需修改接口调用代码
-- 🔥 **RPC 风格原生支持** - 完美适配 hellobike 等项目
+- 🔥 **RPC 风格原生支持** - 完美适配 App H5 等项目
 - ⚡️ **实时热更新** - 修改 Mock 数据，刷新页面即可生效
 - 🎨 **按需拦截** - 只拦截配置了 Mock 文件的接口
 - 🌐 **代理模式** - 未匹配请求可转发到真实 API
@@ -88,7 +88,7 @@ const config = { env: process.env.VUE_APP_ENV || 'dev' };
 if (process.env.VUE_APP_MOCK === 'true') {
   config.API = '/mock-api';  // 指向本地
 } else {
-  config.API = 'https://fat-api.hellobike.com/api';  // 真实 API
+  config.API = 'https://dev-api.xxx.com/api';  // 真实 API
 }
 
 export default config;
@@ -140,7 +140,7 @@ npm run mock
 
 ## 🎨 Mock 数据文件命名规则
 
-### RPC 风格 (推荐，适用于 hellobike 等项目)
+### RPC 风格
 
 | 请求 URL | Mock 文件名 |
 |---------|-----------|
@@ -181,7 +181,7 @@ new WarehouseMockPlugin({
   
   // 代理配置：未匹配的请求转发到真实 API
   proxy: {
-    target: 'https://fat-api.hellobike.com',
+    target: 'https://dev-api.xxx.com',
     changeOrigin: true
   }
 })
@@ -203,7 +203,7 @@ new WarehouseMockPlugin({
     "common.welfare.banner.query"
   ],
   "localApiPrefix": "/mock-api",
-  "proxy": "https://fat-api.hellobike.com",
+  "proxy": "https://dev-api.xxx.com",
   "enabled": true
 }
 ```
@@ -241,11 +241,11 @@ npm run mock
 
 ### 场景 1：外部 API 域名项目 (推荐)
 
-适用于接口请求发往外部域名的项目（如 hellobike）：
+适用于接口请求发往外部域名的项目：
 
 ```javascript
 // vue.config.js
-const WarehouseMockPlugin = require('warehouse-mock-plugin');
+const WarehouseMockPlugin = require('warehouse-mock');
 
 module.exports = {
   configureWebpack: config => {
@@ -253,7 +253,7 @@ module.exports = {
       config.plugins.push(new WarehouseMockPlugin({
         apiPrefixes: ['/mock-api'],
         proxy: {
-          target: 'https://fat-api.hellobike.com',
+          target: 'https://dev-api.example.com',
           changeOrigin: true
         }
       }));
