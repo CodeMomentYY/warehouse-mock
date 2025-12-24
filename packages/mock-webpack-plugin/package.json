@@ -1,6 +1,6 @@
 {
   "name": "warehouse-mock",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "一个专为 Vue 2 项目设计的 Webpack 插件，支持 RPC 风格接口 mock，零业务代码侵入，实时更新",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -41,7 +41,7 @@
     "npm": "^11.7.0"
   },
   "optionalDependencies": {
-    "warehouse-mock-admin": "^1.0.0"
+    "warehouse-mock-admin": "^1.0.1"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
