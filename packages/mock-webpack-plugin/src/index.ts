@@ -61,6 +61,9 @@ class WarehouseMockPlugin {
 
   /**
    * 实时扫描 mock 目录，获取所有 mock 文件名列表
+   * 支持两种格式：
+   * 1. 旧格式：api.json
+   * 2. 新格式：api/.config.json
    */
   getMockFileList(): string[] {
     const mockPath = this.getResolvedMockPath();
@@ -69,7 +72,17 @@ class WarehouseMockPlugin {
     if (fs.existsSync(mockPath)) {
       const files = fs.readdirSync(mockPath);
       files.forEach((file) => {
-        if (file.endsWith('.json')) {
+        const filePath = path.join(mockPath, file);
+        const stats = fs.statSync(filePath);
+        
+        if (stats.isDirectory()) {
+          // 新格式：检查目录下是否有 .config.json
+          const configPath = path.join(filePath, '.config.json');
+          if (fs.existsSync(configPath)) {
+            fileList.push(file);
+          }
+        } else if (file.endsWith('.json') && !file.startsWith('.')) {
+          // 旧格式：直接是 .json 文件（排除 .config.json 等隐藏文件）
           fileList.push(file.replace(/\.json$/, ''));
         }
       });

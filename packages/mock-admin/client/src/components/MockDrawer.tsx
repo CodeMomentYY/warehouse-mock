@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Drawer, Button, Space, message, Spin, Input } from 'antd';
-import { FormatPainterOutlined, CompressOutlined, SaveOutlined } from '@ant-design/icons';
+import { SaveOutlined } from '@ant-design/icons';
 import { getSceneDetail, updateScene } from '../api/mock';
+import JsonEditor from './JsonEditor';
 
 interface MockDrawerProps {
   visible: boolean;
@@ -69,25 +70,6 @@ export default function MockDrawer({ visible, apiName, scene, onClose, onSuccess
     }
   };
 
-  const handleFormat = () => {
-    try {
-      const jsonData = JSON.parse(content);
-      setContent(JSON.stringify(jsonData, null, 2));
-      message.success('格式化成功');
-    } catch (e) {
-      message.error('JSON 格式错误，无法格式化');
-    }
-  };
-
-  const handleMinify = () => {
-    try {
-      const jsonData = JSON.parse(content);
-      setContent(JSON.stringify(jsonData));
-      message.success('压缩成功');
-    } catch (e) {
-      message.error('JSON 格式错误，无法压缩');
-    }
-  };
 
   return (
     <Drawer
@@ -131,41 +113,12 @@ export default function MockDrawer({ visible, apiName, scene, onClose, onSuccess
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
             Mock 数据
           </label>
-          <Space style={{ marginBottom: 8 }}>
-            <Button
-              size="small"
-              icon={<FormatPainterOutlined />}
-              onClick={handleFormat}
-            >
-              格式化
-            </Button>
-            <Button
-              size="small"
-              icon={<CompressOutlined />}
-              onClick={handleMinify}
-            >
-              压缩
-            </Button>
-          </Space>
         </div>
 
-        <textarea
+        <JsonEditor
           value={content}
-          onChange={e => setContent(e.target.value)}
-          style={{
-            width: '100%',
-            height: 'calc(100vh - 380px)',
-            padding: '12px',
-            fontFamily: 'Monaco, Menlo, "Ubuntu Mono", Consolas, monospace',
-            fontSize: 13,
-            border: '1px solid #2d2d2d',
-            borderRadius: 4,
-            resize: 'none',
-            backgroundColor: '#1e1e1e',
-            color: '#d4d4d4',
-            lineHeight: '1.6',
-            outline: 'none'
-          }}
+          onChange={setContent}
+          height="calc(100vh - 380px)"
         />
       </Spin>
     </Drawer>

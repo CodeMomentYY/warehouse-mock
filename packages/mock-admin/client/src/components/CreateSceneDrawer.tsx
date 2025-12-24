@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Drawer, Form, Input, Select, Button, Space, message } from 'antd';
-import { FormatPainterOutlined, CompressOutlined } from '@ant-design/icons';
 import { createScene } from '../api/mock';
-
-const { TextArea } = Input;
+import JsonEditor from './JsonEditor';
 
 interface CreateSceneDrawerProps {
   visible: boolean;
@@ -111,25 +109,6 @@ export default function CreateSceneDrawer({ visible, apiName, onClose, onSuccess
     }
   };
 
-  const handleFormat = () => {
-    try {
-      const jsonData = JSON.parse(content);
-      setContent(JSON.stringify(jsonData, null, 2));
-      message.success('格式化成功');
-    } catch (e) {
-      message.error('JSON 格式错误，无法格式化');
-    }
-  };
-
-  const handleMinify = () => {
-    try {
-      const jsonData = JSON.parse(content);
-      setContent(JSON.stringify(jsonData));
-      message.success('压缩成功');
-    } catch (e) {
-      message.error('JSON 格式错误，无法压缩');
-    }
-  };
 
   return (
     <Drawer
@@ -176,37 +155,11 @@ export default function CreateSceneDrawer({ visible, apiName, onClose, onSuccess
         </Form.Item>
 
         <Form.Item label="Mock 数据">
-          <TextArea
+          <JsonEditor
             value={content}
-            onChange={e => setContent(e.target.value)}
-            rows={16}
-            style={{
-              fontFamily: 'Monaco, Menlo, "Ubuntu Mono", Consolas, monospace',
-              fontSize: 13,
-              backgroundColor: '#1e1e1e',
-              color: '#d4d4d4',
-              border: '1px solid #2d2d2d',
-              lineHeight: '1.6'
-            }}
+            onChange={setContent}
+            height="350px"
           />
-          <div style={{ marginTop: 8 }}>
-            <Space>
-              <Button
-                size="small"
-                icon={<FormatPainterOutlined />}
-                onClick={handleFormat}
-              >
-                格式化
-              </Button>
-              <Button
-                size="small"
-                icon={<CompressOutlined />}
-                onClick={handleMinify}
-              >
-                压缩
-              </Button>
-            </Space>
-          </div>
         </Form.Item>
       </Form>
     </Drawer>

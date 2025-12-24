@@ -64,9 +64,9 @@ export function createAdminServer(options: AdminServerOptions) {
   
   // 启动服务
   const server = app.listen(port, () => {
-    const url = `http://localhost:${port}`;
-    console.log(chalk.cyan(`\n[WarehouseMock Admin] 管理后台已启动:`));
-    console.log(chalk.green(`  ➜  ${url}\n`));
+    // const url = `http://localhost:${port}`;
+    // console.log(chalk.cyan(`\n[WarehouseMock Admin] 管理后台已启动:`));
+    // console.log(chalk.green(`  ➜  ${url}\n`));
   });
   
   return {

@@ -1,6 +1,6 @@
 {
   "name": "user.taurus.pointInfo",
-  "delay": 0,
+  "delay": 500,
   "enabled": true,
-  "activeScene": "success"
+  "activeScene": "default"
 }
