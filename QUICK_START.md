@@ -15,7 +15,7 @@
 ## 📦 第一步：安装（30 秒）
 
 ```bash
-npm install warehouse-mock-plugin --save-dev
+npm install warehouse-mock --save-dev
 ```
 
 ---

@@ -46,7 +46,7 @@
 ## 📦 安装
 
 ```bash
-npm install warehouse-mock-plugin --save-dev
+npm install warehouse-mock --save-dev
 ```
 
 ---
@@ -193,8 +193,6 @@ new WarehouseMockPlugin({
 
 ### 查看可用 Mock 列表
 
-访问: http://localhost:8080/__mock_list__
-
 ```json
 {
   "mockList": [
@@ -207,10 +205,6 @@ new WarehouseMockPlugin({
   "enabled": true
 }
 ```
-
-### 直接访问 Mock 数据
-
-访问: http://localhost:8080/mock-api?user.account.getInfo
 
 ---
 
@@ -232,8 +226,6 @@ cd packages/example-vue2
 # 启动 Mock 模式
 npm run mock
 ```
-
-访问 http://localhost:8080 查看效果。
 
 ---
 
