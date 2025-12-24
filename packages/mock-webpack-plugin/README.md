@@ -1,10 +1,10 @@
-# warehouse-mock-plugin
+# warehouse-mock
 
 <div align="center">
 
 极简 Vue Mock 插件，零业务代码侵入，完美支持 RPC 风格接口
 
-[![npm version](https://img.shields.io/npm/v/warehouse-mock-plugin.svg)](https://www.npmjs.com/package/warehouse-mock-plugin)
+[![npm version](https://img.shields.io/npm/v/warehouse-mock.svg)](https://www.npmjs.com/package/warehouse-mock)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 </div>
@@ -12,7 +12,7 @@
 ## 安装
 
 ```bash
-npm install warehouse-mock-plugin --save-dev
+npm install warehouse-mock --save-dev
 ```
 
 ## 快速开始
@@ -20,7 +20,7 @@ npm install warehouse-mock-plugin --save-dev
 ### 1. 配置 vue.config.js
 
 ```javascript
-const WarehouseMockPlugin = require('warehouse-mock-plugin');
+const WarehouseMockPlugin = require('warehouse-mock');
 
 const isMock = process.env.MOCK === 'true';
 
