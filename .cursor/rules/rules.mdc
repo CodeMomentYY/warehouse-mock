@@ -18,17 +18,33 @@ globs: packages/**/*
 ```
 warehouse-mock/
 ├── packages/
-│   ├── mock-webpack-plugin/   # 核心 Webpack 插件（npm: warehouse-mock）
+│   ├── mock-core/              # 框架无关核心引擎（npm: warehouse-mock-core）
+│   ├── mock-webpack-plugin/   # Webpack 插件（npm: warehouse-mock）
+│   ├── mock-vite-plugin/       # Vite 插件（npm: warehouse-mock-vite）
 │   ├── mock-admin/             # 可视化管理后台（npm: warehouse-mock-admin）
-│   └── example-vue2/           # Vue 2 示例项目（private，不发布）
+│   ├── example-vue2/           # Vue 2 + Webpack 示例项目（private，不发布）
+│   └── example-vue3-vite/      # Vue 3 + Vite 示例项目（private，不发布）
 ├── lerna.json                  # Lerna 配置
 └── package.json                # 根配置
 ```
 
 ### 核心包说明
 
+#### 0. `mock-core` (npm: `warehouse-mock-core`)
+**作用**: 框架无关的核心引擎，封装所有与构建工具无关的逻辑，供 Webpack/Vite 插件复用。
+
+**核心能力**（`MockEngine` 类）:
+- ✅ 请求拦截与匹配（RPC query string → 扁平化 → 嵌套目录，多级回退）
+- ✅ 多场景 / 接口级延时 / 启用配置
+- ✅ 代理转发、Mock 文件扫描、`/__mock_list__` 端点
+- ✅ 管理后台启动（动态加载 `warehouse-mock-admin`）
+- ✅ 对外暴露标准 connect 中间件 `engine.middleware`
+
+**发布名称**: `warehouse-mock-core`
+**说明**: 一般无需直接安装，作为各插件的依赖被自动安装。
+
 #### 1. `mock-webpack-plugin` (npm: `warehouse-mock`)
-**作用**: Webpack 插件本体，拦截 HTTP 请求并返回本地 Mock 数据。
+**作用**: Webpack 插件，基于 `warehouse-mock-core` 做 Webpack 适配（中间件挂载 + `process.env.VUE_APP_MOCK` 注入）。
 
 **核心功能**:
 - ✅ 支持 Webpack 4/5（Vue CLI 3-5）
@@ -40,7 +56,20 @@ warehouse-mock/
 - ✅ 集成可视化管理后台（可选）
 
 **发布名称**: `warehouse-mock`  
-**依赖关系**: `optionalDependencies: warehouse-mock-admin`
+**依赖关系**: `dependencies: warehouse-mock-core`，`optionalDependencies: warehouse-mock-admin`
+
+#### 1.5 `mock-vite-plugin` (npm: `warehouse-mock-vite`)
+**作用**: Vite 插件，专为 Vue3 + Vite 项目设计，基于 `warehouse-mock-core` 做 Vite 适配。
+
+**核心功能**:
+- ✅ 通过 `config()` 钩子注入 `import.meta.env.VITE_MOCK`（键名可用 `envKey` 自定义）
+- ✅ 通过 `configureServer()` 将核心中间件挂载到 Vite Dev Server
+- ✅ 多场景 / 延时 / 启用 / 代理 / 管理后台，与 Webpack 版完全一致（共享核心引擎）
+- ✅ `apply: 'serve'`，仅开发阶段生效
+
+**发布名称**: `warehouse-mock-vite`
+**依赖关系**: `dependencies: warehouse-mock-core`，`optionalDependencies: warehouse-mock-admin`
+**接入方式**: 直接加入 `vite.config.js` 的 `plugins` 数组
 
 #### 2. `mock-admin` (npm: `warehouse-mock-admin`)
 **作用**: 提供可视化后台，通过 Web 界面管理 Mock 数据。
@@ -63,12 +92,21 @@ warehouse-mock/
 **端口**: 默认 `3100`
 
 #### 3. `example-vue2`
-**作用**: 用于测试和演示插件功能的 Vue 2 项目。
+**作用**: 用于测试和演示 Webpack 插件功能的 Vue 2 项目。
 
 **特点**:
 - ⚠️ 标记为 `"private": true`，**不会被 Lerna 发布**
 - ✅ 包含完整的接入配置示例
 - ✅ 包含多场景 Mock 数据示例
+
+#### 4. `example-vue3-vite`
+**作用**: 用于测试和演示 Vite 插件功能的 Vue 3 项目。
+
+**特点**:
+- ⚠️ 标记为 `"private": true`，**不会被 Lerna 发布**
+- ✅ 演示 `warehouseMockVite()` 三步接入
+- ✅ 使用 `import.meta.env.VITE_MOCK` 切换 API 地址
+- ✅ 脚本：`npm run mock`（即 `MOCK=true vite`）
 
 ---
 
@@ -383,6 +421,58 @@ export default config;
 - 外部 API 不会经过 webpack dev server，插件无法拦截
 - 必须将 API 地址改为本地路径（如 `/mock-api`），请求才会被插件中间件拦截
 - `VUE_APP_MOCK` 环境变量由插件自动注入（或手动注入），用于控制 API 地址切换
+
+### 场景四：Vue3 + Vite 项目 ⭐ 新增
+
+**适用包**: `warehouse-mock-vite`
+
+#### 1. vite.config.js
+```javascript
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import { warehouseMockVite } from 'warehouse-mock-vite';
+
+const isMock = process.env.MOCK === 'true';
+
+export default defineConfig({
+  plugins: [
+    vue(),
+    ...(isMock ? [warehouseMockVite({
+      // mockPath、apiPrefixes、proxy、admin 等选项与 Webpack 版一致
+      // envKey: 'VITE_MOCK',  // 注入的环境变量键名，默认 VITE_MOCK
+    })] : []),
+  ],
+});
+```
+
+#### 2. src/const/config.js（关键！）
+```javascript
+const config = {};
+
+// ⚠️ Vite 使用 import.meta.env，而非 process.env
+if (import.meta.env.VITE_MOCK === 'true') {
+  config.API = '/mock-api';
+} else {
+  config.API = 'https://dev-api.example.com/api';
+}
+
+export default config;
+```
+
+#### 3. package.json
+```json
+{
+  "scripts": {
+    "dev": "vite",
+    "mock": "MOCK=true vite"
+  }
+}
+```
+
+**与 Webpack 版的关键差异**:
+- 环境变量从 `process.env.VUE_APP_MOCK` 改为 `import.meta.env.VITE_MOCK`
+- 接入方式从 `vue.config.js` 的 `setupMiddlewares`/`before` 改为直接加入 `plugins`
+- 其余（Mock 数据格式、多场景、延时、代理、管理后台）完全一致，因为底层共享 `warehouse-mock-core`
 
 ---
 

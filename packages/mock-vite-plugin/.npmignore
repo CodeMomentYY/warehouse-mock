@@ -1,0 +1,14 @@
+# 源代码（只发布编译后的 dist）
+src/
+*.ts
+!*.d.ts
+
+# 配置文件
+tsconfig.json
+.eslintrc*
+.prettierrc*
+
+# 开发文件
+node_modules/
+*.log
+.DS_Store

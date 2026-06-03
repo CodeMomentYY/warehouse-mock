@@ -1,7 +1,7 @@
 {
-  "name": "warehouse-mock",
-  "version": "1.1.5",
-  "description": "一个专为 Vue 2 项目设计的 Webpack 插件，支持 RPC 风格接口 mock，零业务代码侵入，实时更新",
+  "name": "warehouse-mock-vite",
+  "version": "1.0.0",
+  "description": "Warehouse Mock 的 Vite 插件，专为 Vue3 + Vite 项目设计，零业务侵入，支持 RPC 风格接口、多场景与可视化管理后台",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -13,10 +13,11 @@
     "prepublishOnly": "npm run build"
   },
   "keywords": [
-    "webpack",
+    "vite",
     "plugin",
     "mock",
     "vue",
+    "vue3",
     "rpc",
     "api",
     "typescript",
@@ -27,7 +28,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/CodeMomentYY/warehouse-mock.git",
-    "directory": "packages/mock-webpack-plugin"
+    "directory": "packages/mock-vite-plugin"
   },
   "bugs": {
     "url": "https://github.com/CodeMomentYY/warehouse-mock/issues"
@@ -35,9 +36,6 @@
   "homepage": "https://github.com/CodeMomentYY/warehouse-mock#readme",
   "dependencies": {
     "chalk": "^4.1.2",
-    "chokidar": "^3.5.3",
-    "i": "^0.3.7",
-    "npm": "^11.7.0",
     "warehouse-mock-core": "^1.0.0"
   },
   "optionalDependencies": {
@@ -45,14 +43,11 @@
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
-    "@types/webpack": "^5.0.0",
-    "@types/webpack-dev-server": "^4.0.0",
     "typescript": "^5.0.0",
-    "webpack": "^5.0.0",
-    "webpack-dev-server": "^4.0.0"
+    "vite": "^4.0.0"
   },
   "peerDependencies": {
-    "webpack": "^4.0.0 || ^5.0.0"
+    "vite": "^3.0.0 || ^4.0.0 || ^5.0.0"
   },
   "engines": {
     "node": ">=12.0.0"

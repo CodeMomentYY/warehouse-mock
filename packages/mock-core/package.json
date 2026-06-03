@@ -1,0 +1,41 @@
+{
+  "name": "warehouse-mock-core",
+  "version": "1.0.0",
+  "description": "Warehouse Mock 框架无关的核心引擎：请求拦截、多场景、延时、代理与管理后台启动",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mock",
+    "core",
+    "rpc",
+    "api"
+  ],
+  "author": "CodeMomentYY",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CodeMomentYY/warehouse-mock.git",
+    "directory": "packages/mock-core"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2"
+  },
+  "optionalDependencies": {
+    "warehouse-mock-admin": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=12.0.0"
+  }
+}

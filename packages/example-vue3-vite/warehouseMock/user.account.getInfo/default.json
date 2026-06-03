@@ -1,0 +1,8 @@
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "userName": "Vite 用户",
+    "userAge": "18"
+  }
+}
