@@ -76,7 +76,7 @@ export default function MockDrawer({ visible, apiName, scene, onClose, onSuccess
       title={`编辑场景 - ${apiName} / ${scene}`}
       open={visible}
       onClose={onClose}
-      width={600}
+      width="min(90vw, 900px)"
       footer={
         <div style={{ textAlign: 'right' }}>
           <Space>

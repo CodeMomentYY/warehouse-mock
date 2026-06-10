@@ -115,7 +115,7 @@ export default function CreateSceneDrawer({ visible, apiName, onClose, onSuccess
       title={`添加场景 - ${apiName}`}
       open={visible}
       onClose={handleCancel}
-      width={600}
+      width="min(90vw, 900px)"
       footer={
         <div style={{ textAlign: 'right' }}>
           <Space>
